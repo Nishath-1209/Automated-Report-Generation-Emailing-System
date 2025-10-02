@@ -1,6 +1,4 @@
+streamlit
 supabase
 python-dotenv
 pandas
-email
-click
-schedule
