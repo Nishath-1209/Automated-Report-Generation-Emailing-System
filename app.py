@@ -9,7 +9,6 @@ from supabase import create_client
 supabase_url = st.secrets["SUPABASE"]["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE"]["SUPABASE_KEY"]
 supabase = create_client(supabase_url, supabase_key)
-
 # ----------------- SMTP connection -----------------
 smtp_server = st.secrets["SMTP"]["SMTP_SERVER"]
 smtp_port = st.secrets["SMTP"]["SMTP_PORT"]
