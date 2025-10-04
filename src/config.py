@@ -1,22 +1,15 @@
-import os
-from dotenv import load_dotenv
+import streamlit as st
 from supabase import create_client, Client
 
-# Load environment variables from .env
-load_dotenv()
+SUPABASE_URL = st.secrets["SUPABASE"]["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE"]["SUPABASE_KEY"]
 
-# Supabase configuration
-SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
-
-# Initialize Supabase client
 sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+SMTP_SERVER = st.secrets["SMTP"]["SMTP_SERVER"]
+SMTP_PORT = st.secrets["SMTP"]["SMTP_PORT"]
+SMTP_USER = st.secrets["SMTP"]["SMTP_USER"]
+SMTP_PASS = st.secrets["SMTP"]["SMTP_PASS"]
 
 def get_supabase() -> Client:
     return sb
-
-# SMTP / Email Configuration
-SMTP_SERVER: str = os.getenv("SMTP_SERVER")
-SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
-SMTP_USER: str = os.getenv("SMTP_USER")
-SMTP_PASS: str = os.getenv("SMTP_PASS")
