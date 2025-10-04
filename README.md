@@ -29,9 +29,12 @@ Future Enhancements
 Manual report creation and email delivery can be slow and error-prone. This system provides:
 
 ✅ Automated report creation
+
 ✅ Email delivery to customers (with optional attachments)
+
 ✅ Full tracking of sent reports
-✅ Clean separation of concerns: CLI → Services → DAO → Database
+
+✅ Clean separation of concerns: CLI   →   Services   →   DAO   →   Database
 
 Built with Python and Supabase, this project is ideal for businesses needing automated reporting with minimal manual intervention.
 
