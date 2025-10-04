@@ -1,4 +1,3 @@
-# src/dao/report_dao.py
 from typing import Optional, List, Dict
 from src.config import get_supabase
 
@@ -10,9 +9,10 @@ class ReportDAO:
         self.sb = sb
 
     def create(self, customer_id: int, title: str, content: str) -> Optional[Dict]:
+        """Insert a new report and return the inserted row with report_id"""
         payload = {"customer_id": customer_id, "title": title, "content": content}
-        self.sb.table("reports").insert(payload).execute()
-        resp = self.sb.table("reports").select("*").eq("customer_id", customer_id).eq("title", title).limit(1).execute()
+        # Use 'returning' to get inserted row
+        resp = self.sb.table("reports").insert(payload, returning="representation").execute()
         return resp.data[0] if resp.data else None
 
     def read_all(self, limit: int = 100) -> List[Dict]:

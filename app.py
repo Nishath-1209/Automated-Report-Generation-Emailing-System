@@ -3,18 +3,20 @@ from src.services.customer_service import customer_service
 from src.services.report_service import report_service
 from src.services.scheduler_service import scheduler_service
 from src.services import email_log_service
+from supabase import create_client
 
-# Supabase config
+# ----------------- Supabase connection -----------------
 supabase_url = st.secrets["SUPABASE"]["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE"]["SUPABASE_KEY"]
+supabase = create_client(supabase_url, supabase_key)
 
-# SMTP config
+# ----------------- SMTP connection -----------------
 smtp_server = st.secrets["SMTP"]["SMTP_SERVER"]
 smtp_port = st.secrets["SMTP"]["SMTP_PORT"]
 smtp_user = st.secrets["SMTP"]["SMTP_USER"]
 smtp_pass = st.secrets["SMTP"]["SMTP_PASS"]
 
-# Main title
+# ----------------- Main UI -----------------
 st.markdown(
     """
     <h1 style='color:#4CAF50; font-family: Verdana;'>🚀 Automated Report Generation & Emailing System</h1>
@@ -24,7 +26,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Horizontal top menu
 menu = ["Customer", "Report", "Send Report", "Scheduler", "Email Logs"]
 choice = st.radio("Menu", menu, horizontal=True)
 
@@ -38,7 +39,6 @@ if choice == "Customer":
             name = st.text_input("Name")
             email = st.text_input("Email")
             phone = st.text_input("Phone")
-
             submitted = st.form_submit_button("Add Customer")
             if submitted:
                 if not name or not email:
@@ -57,16 +57,14 @@ if choice == "Customer":
     elif action == "Update":
         with st.form("update_customer_form"):
             cust_id = st.number_input("Customer ID", min_value=1)
-
             name = st.text_input("New Name")
             email = st.text_input("New Email")
             phone = st.text_input("New Phone")
             submitted = st.form_submit_button("Update Customer")
-
             if submitted:
                 fields = {k: v for k, v in {"name": name, "email": email, "phone": phone}.items() if v}
                 if not fields:
-                    st.warning("Please provide at least one field to update.")
+                    st.warning("Provide at least one field to update.")
                 else:
                     result = customer_service.update_customer(cust_id, fields)
                     st.success(f"Customer Updated: {result}")
@@ -82,7 +80,6 @@ elif choice == "Report":
             title = st.text_input("Title")
             content = st.text_area("Content")
             submitted = st.form_submit_button("Add Report")
-
             if submitted:
                 if not title or not content:
                     st.error("Title and Content are required!")
@@ -103,7 +100,6 @@ elif choice == "Report":
             title = st.text_input("New Title")
             content = st.text_area("New Content")
             submitted = st.form_submit_button("Update Report")
-
             if submitted:
                 if not title and not content:
                     st.warning("Provide at least one field to update.")
@@ -112,13 +108,30 @@ elif choice == "Report":
                     st.success(f"Report Updated: {result}")
 
     elif action == "Delete":
-        with st.form("delete_report_form"):
-            report_id = st.number_input("Report ID", min_value=1)
-            submitted = st.form_submit_button("Delete Report")
+        st.subheader("Delete Report")
+        report_id = st.number_input("Report ID", min_value=1)
 
-            if submitted:
-                result = report_service.remove_report(report_id)
-                st.success(f"Report Deleted: {result}")
+        # Check for email logs referencing this report
+        email_logs = [
+            log for log in email_log_service.get_email_logs(limit=1000)
+            if log["report_id"] == report_id
+        ]
+
+        if email_logs:
+            st.warning(f"❌ Cannot delete report {report_id} because {len(email_logs)} email log(s) reference it.")
+            with st.form(f"delete_report_with_logs_form_{report_id}"):
+                confirm = st.form_submit_button(f"Delete Report {report_id} and all associated email logs")
+                if confirm:
+                    from src.dao.email_log_dao import email_log_dao
+                    email_log_dao.sb.table("email_log").delete().eq("report_id", report_id).execute()
+                    result = report_service.remove_report(report_id)
+                    st.success(f"✅ Report {report_id} and its {len(email_logs)} email log(s) deleted successfully!")
+        else:
+            with st.form(f"delete_report_form_{report_id}"):
+                confirm = st.form_submit_button(f"Delete Report {report_id}")
+                if confirm:
+                    result = report_service.remove_report(report_id)
+                    st.success(f"✅ Report {report_id} deleted successfully!")
 
 # ----------------- Send Report -----------------
 elif choice == "Send Report":
@@ -127,14 +140,27 @@ elif choice == "Send Report":
         customer_id = st.number_input("Customer ID", min_value=1)
         title = st.text_input("Report Title")
         content = st.text_area("Report Content")
+        uploaded_file = st.file_uploader("Attach a file (optional)", type=["pdf", "csv", "png", "jpg", "txt"])
         submitted = st.form_submit_button("Send Email")
-
         if submitted:
             if not title or not content:
                 st.error("Title and Content are required!")
             else:
-                result = scheduler_service.generate_and_send_report(customer_id, title, content)
-                st.success(f"Report Sent: {result}")
+                attachment_data = uploaded_file.read() if uploaded_file else None
+                attachment_name = uploaded_file.name if uploaded_file else None
+                result = scheduler_service.generate_and_send_report(
+                    customer_id,
+                    title,
+                    content,
+                    attachment_data=attachment_data,
+                    attachment_name=attachment_name
+                )
+                if "error" in result:
+                    st.error(result["error"])
+                else:
+                    st.success(f"✅ Report Sent to Customer {customer_id}")
+                    if result.get("attachment_sent"):
+                        st.info(f"📎 Attachment `{attachment_name}` was included.")
 
 # ----------------- Scheduler -----------------
 elif choice == "Scheduler":

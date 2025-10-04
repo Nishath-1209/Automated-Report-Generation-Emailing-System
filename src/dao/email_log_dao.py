@@ -18,7 +18,9 @@ class EmailLogDAO:
             "sent_at": datetime.utcnow().isoformat()
         }
         self.sb.table("email_log").insert(payload).execute()
-        resp = self.sb.table("email_log").select("*").eq("customer_id", customer_id).eq("report_id", report_id).limit(1).execute()
+        resp = self.sb.table("email_log").select("*") \
+            .eq("customer_id", customer_id) \
+            .eq("report_id", report_id).limit(1).execute()
         return resp.data[0] if resp.data else None
 
     def list_logs(self, limit: int = 100) -> List[Dict]:
