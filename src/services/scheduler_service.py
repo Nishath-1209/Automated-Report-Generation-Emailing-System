@@ -1,4 +1,3 @@
-# src/services/scheduler_service.py
 from src.services.report_service import report_service
 from src.services.email_service import email_service
 from src.services.customer_service import customer_service
@@ -8,7 +7,7 @@ from src.utils.pdf_utils import generate_pdf  # PDF generator
 
 class SchedulerService:
     """
-    Service to automate report generation and emailing (with PDF attachments)
+    Service to automate report generation and emailing (with optional file or PDF attachments)
     """
     def __init__(self):
         self.report_service = report_service
@@ -19,9 +18,11 @@ class SchedulerService:
         self,
         customer_id: int,
         title: str,
-        content: str
+        content: str,
+        attachment_data: bytes = None,
+        attachment_name: str = None
     ) -> dict:
-        """Generate a report, create PDF, email it, and log the email"""
+        """Generate a report, optionally attach a file or auto-generate PDF, send email, and log it."""
 
         # 1️⃣ Get Customer
         customer = self.customer_service.get_customer_by_id(customer_id)
@@ -31,20 +32,23 @@ class SchedulerService:
         # 2️⃣ Create & Save Report
         report = self.report_service.add_report(customer_id, title, content)
 
-        # 3️⃣ Generate PDF
-        pdf_file = generate_pdf(title, content)
+        # 3️⃣ If no file uploaded, generate a PDF
+        if attachment_data is None:
+            pdf_file = generate_pdf(title, content)
+            attachment_data = pdf_file.read()
+            attachment_name = f"{title}.pdf"
 
         # 4️⃣ Prepare Email
         subject = f"Your Report: {title}"
         body = f"Hello {customer['name']},\n\nPlease find your report attached."
 
-        # 5️⃣ Send Email with PDF attachment
+        # 5️⃣ Send Email with attachment
         send_email(
             to_email=customer["email"],
             subject=subject,
             body=body,
-            attachment_data=pdf_file.read(),
-            attachment_name=f"{title}.pdf"
+            attachment_data=attachment_data,
+            attachment_name=attachment_name
         )
 
         # 6️⃣ Log Email in Database
